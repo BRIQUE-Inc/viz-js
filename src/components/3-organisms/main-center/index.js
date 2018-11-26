@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import PropTypes from 'prop-types';
 
 const MARGIN = {
   top: 14,
@@ -76,5 +77,13 @@ class MainCenter extends Component {
     this.setState(_setSize(width, height), f);
   }
 }
+
+MainCenter.defaultProps = {
+  series: [],
+};
+
+MainCenter.propTypes = {
+  series: PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.number)),
+};
 
 export default MainCenter;
