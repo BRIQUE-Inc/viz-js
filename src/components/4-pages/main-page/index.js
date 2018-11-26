@@ -10,10 +10,22 @@ const _setSeries = series => prevState => ({
   series,
 });
 
+const _setSeriesNum = num => prevState => ({
+  ...prevState,
+  seriesNum: num,
+});
+
+const _setPointsNum = num => prevState => ({
+  ...prevState,
+  pointsNum: num,
+});
+
 class MainPage extends Component {
   constructor(props) {
     super(props);
     this.state = {
+      seriesNum: 0,
+      pointsNum: 0,
       series: [],
     };
     this._onChangeSetting = this._onChangeSetting.bind(this);
@@ -22,7 +34,7 @@ class MainPage extends Component {
   render() {
     const {
       _onChangeSetting,
-      state: { series },
+      state: { series, pointsNum },
     } = this;
     return (
       <div
@@ -36,7 +48,11 @@ class MainPage extends Component {
         <MainHeader />
         <div style={{ height: 0, flexGrow: 1, display: 'flex' }}>
           <MainLeft onChangeSetting={_onChangeSetting} />
-          <MainCenter series={series} />
+          <MainCenter
+            series={series}
+            xDomain={[0, pointsNum - 1]}
+            yDomain={[0, 100]}
+          />
           <MainRight />
         </div>
       </div>
@@ -47,7 +63,13 @@ class MainPage extends Component {
     const series = _.map(_.range(seriesNum), () =>
       _.map(_.range(pointsNum), () => _.random(0, 100)),
     );
-    this.setState(_setSeries(series));
+    this.setState(
+      _.compose(
+        _setSeries(series),
+        _setPointsNum(pointsNum),
+        _setSeriesNum(seriesNum),
+      ),
+    );
   }
 }
 

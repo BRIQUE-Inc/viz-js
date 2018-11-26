@@ -77,7 +77,7 @@ class MainLeft extends Component {
     } = this;
     const seriesNum = parseInt(_seriesNum, 10);
     const pointsNum = parseInt(_pointsNum, 10);
-    if (isNaN(seriesNum) || isNaN(pointsNum)) return;
+    if (isNaN(seriesNum) || isNaN(pointsNum) || seriesNum > 10) return;
     onChangeSetting(seriesNum, pointsNum);
   }
 }
