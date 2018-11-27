@@ -5,28 +5,25 @@ import MainHeader from '../../3-organisms/main-header';
 import MainLeft from '../../3-organisms/main-left';
 import MainRight from '../../3-organisms/main-right';
 
-const _setSeries = series => prevState => ({
+const _setSeries = seriesById => prevState => ({
   ...prevState,
-  series,
+  seriesById,
+  allSeriesIds: _.keys(seriesById),
 });
 
-const _setSeriesNum = num => prevState => ({
+const _setDomainX = domainX => prevState => ({
   ...prevState,
-  seriesNum: num,
-});
-
-const _setPointsNum = num => prevState => ({
-  ...prevState,
-  pointsNum: num,
+  domainX,
 });
 
 class MainPage extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      seriesNum: 0,
-      pointsNum: 0,
-      series: [],
+      seriesById: {},
+      allSeriesIds: [],
+      domainX: [],
+      domainY: [0, 100],
     };
     this._onChangeSetting = this._onChangeSetting.bind(this);
   }
@@ -34,7 +31,7 @@ class MainPage extends Component {
   render() {
     const {
       _onChangeSetting,
-      state: { series, pointsNum },
+      state: { seriesById, allSeriesIds, domainX, domainY },
     } = this;
     return (
       <div
@@ -49,9 +46,10 @@ class MainPage extends Component {
         <div style={{ height: 0, flexGrow: 1, display: 'flex' }}>
           <MainLeft onChangeSetting={_onChangeSetting} />
           <MainCenter
-            series={series}
-            xDomain={[0, pointsNum - 1]}
-            yDomain={[0, 100]}
+            seriesById={seriesById}
+            allSeriesIds={allSeriesIds}
+            domainX={domainX}
+            domainY={domainY}
           />
           <MainRight />
         </div>
@@ -60,14 +58,24 @@ class MainPage extends Component {
   }
 
   _onChangeSetting(seriesNum, pointsNum) {
-    const series = _.map(_.range(seriesNum), () =>
-      _.map(_.range(pointsNum), () => _.random(0, 100)),
+    const {
+      state: { domainY },
+    } = this;
+    const seriesById = _.reduce(
+      _.range(seriesNum),
+      (seriesById, id) => {
+        seriesById[id] = _.map(_.range(pointsNum), x => ({
+          x,
+          y: _.random(...domainY),
+        }));
+        return seriesById;
+      },
+      {},
     );
     this.setState(
       _.compose(
-        _setSeries(series),
-        _setPointsNum(pointsNum),
-        _setSeriesNum(seriesNum),
+        _setSeries(seriesById),
+        _setDomainX([0, pointsNum - 1]),
       ),
     );
   }
