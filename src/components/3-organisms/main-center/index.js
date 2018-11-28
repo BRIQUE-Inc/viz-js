@@ -2,6 +2,18 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import _ from 'underscore';
 import * as d3 from 'd3';
+import {
+  makeLinearScaleX,
+  makeLinearScaleY,
+  transformCanvas,
+  clearCanvasByContext,
+  clearCanvas,
+  transformCoordX,
+  transformCoordY,
+  inverseCoord,
+  concatTransform,
+  drawLineInCanvas,
+} from '../../../assets/js/viz';
 
 /* ===== Constants ===== */
 const MARGIN = {
@@ -11,18 +23,7 @@ const MARGIN = {
   left: 80,
 };
 
-/* ===== Helpers ===== */
-const _makeScaleX = (domain, width) =>
-  d3
-    .scaleLinear()
-    .domain(domain)
-    .range([0, width]);
-
-const _makeScaleY = (domain, height) =>
-  d3
-    .scaleLinear()
-    .domain(domain.slice().reverse())
-    .range([0, height]);
+const _makeRandomColor = d3.scaleOrdinal(d3.schemeCategory10);
 
 /* ===== State handlers ===== */
 const _setSize = (
@@ -101,10 +102,16 @@ const _zoom = prevState => {
   const sx2 = innerWidth / mouseRectWidth;
   const sy2 = innerHeight / mouseRectHeight;
 
-  const tx = (tx1 + tx2) * sx2;
-  const ty = (ty1 + ty2) * sy2;
-  const sx = sx1 * sx2;
-  const sy = sy1 * sy2;
+  const [tx, ty, sx, sy] = concatTransform(
+    tx1,
+    ty1,
+    sx1,
+    sy1,
+    tx2,
+    ty2,
+    sx2,
+    sy2,
+  );
 
   return {
     ...prevState,
@@ -186,7 +193,6 @@ class MainCenter extends Component {
 
     this._container = React.createRef();
     this._canvasLower = React.createRef();
-    window.chart = this._canvasLower;
     this._canvasUpper = React.createRef();
 
     this._onMouseDownSvg = this._onMouseDownSvg.bind(this);
@@ -230,23 +236,26 @@ class MainCenter extends Component {
 
     const isPlotting = allSeriesIds.length;
 
-    const scaleX = _makeScaleX(domainX, innerWidth);
-    const scaleY = _makeScaleY(domainY, innerHeight);
+    const scaleX = makeLinearScaleX(domainX, innerWidth);
+    const scaleY = makeLinearScaleY(domainY, innerHeight);
 
-    const { tx, ty, sx, sy } = _.first(zoomStack);
+    const { tx: _tx, ty: _ty, sx, sy } = _.first(zoomStack);
+    const tx = panning
+      ? _tx + panningX + mouseMoveX - mouseDownX
+      : _tx + panningX;
+    const ty = panning
+      ? _ty + panningY + mouseMoveY - mouseDownY
+      : _ty + panningY;
 
-    const rangeStartX = panning
-      ? (0 - tx - panningX - mouseMoveX + mouseDownX) / sx
-      : (0 - tx - panningX) / sx;
-    const rangeStartY = panning
-      ? (innerHeight - ty - panningY - mouseMoveY + mouseDownY) / sy
-      : (innerHeight - ty - panningY) / sy;
-    const rangeEndX = panning
-      ? (innerWidth - tx - panningX - mouseMoveX + mouseDownX) / sx
-      : (innerWidth - tx - panningX) / sx;
-    const rangeEndY = panning
-      ? (0 - ty - panningY - mouseMoveY + mouseDownY) / sy
-      : (0 - ty - panningY) / sy;
+    const [rangeStartX, rangeStartY] = inverseCoord(
+      tx,
+      ty,
+      sx,
+      sy,
+      0,
+      innerHeight,
+    );
+    const [rangeEndX, rangeEndY] = inverseCoord(tx, ty, sx, sy, innerWidth, 0);
 
     const domainStartX = scaleX.invert(rangeStartX);
     const domainStartY = scaleY.invert(rangeStartY);
@@ -254,40 +263,24 @@ class MainCenter extends Component {
     const domainEndY = scaleY.invert(rangeEndY);
 
     // x-ticks
-    const domainLenX = Math.abs(domainStartX - domainEndX);
-    const domainDeltaX = domainLenX / 10;
-    const domainTicksX = _.map(
-      _.range(1, 10),
-      v => domainStartX + v * domainDeltaX,
-    );
-    const rangeTicksX = _.map(domainTicksX, v => ({
-      value: scaleX(v),
-      label: v,
-    }));
-    const ticksX = _.map(rangeTicksX, ({ value, label }) => ({
-      value: panning
-        ? value * sx + tx + panningX + mouseMoveX - mouseDownX
-        : value * sx + tx + panningX,
-      label: label.toFixed(1),
-    }));
+    const domainDeltaX = Math.abs(domainStartX - domainEndX) / 10;
+    const ticksX = _.map(_.range(1, 10), v => {
+      const domainTickX = domainStartX + v * domainDeltaX;
+      return {
+        value: transformCoordX(tx, sx, scaleX(domainTickX)),
+        label: domainTickX.toFixed(1),
+      };
+    });
 
     // y-ticks
-    const domainLenY = Math.abs(domainStartY - domainEndY);
-    const domainDeltaY = domainLenY / 8;
-    const domainTicksY = _.map(
-      _.range(1, 8),
-      v => domainStartY + v * domainDeltaY,
-    );
-    const rangeTicksY = _.map(domainTicksY, v => ({
-      value: scaleY(v),
-      label: v,
-    }));
-    const ticksY = _.map(rangeTicksY, ({ value, label }) => ({
-      value: panning
-        ? value * sy + ty + panningY + mouseMoveY - mouseDownY
-        : value * sy + ty + panningY,
-      label: label.toFixed(1),
-    }));
+    const domainDeltaY = Math.abs(domainStartY - domainEndY) / 8;
+    const ticksY = _.map(_.range(1, 8), v => {
+      const domainTickY = domainStartY + v * domainDeltaY;
+      return {
+        value: transformCoordY(ty, sy, scaleY(domainTickY)),
+        label: domainTickY.toFixed(1),
+      };
+    });
 
     const zoomRectX = _.min([mouseDownX, mouseMoveX]);
     const zoomRectY = _.min([mouseDownY, mouseMoveY]);
@@ -408,10 +401,8 @@ class MainCenter extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    if (prevProps.seriesById !== this.props.seriesById) {
-      return this._reset();
-    }
-    this._drawLine();
+    const { _reset, _drawLine, props } = this;
+    prevProps.seriesById !== props.seriesById ? _reset() : _drawLine();
   }
 
   componentWillUnmount() {
@@ -509,65 +500,38 @@ class MainCenter extends Component {
     const { tx, ty, sx, sy } = _.first(zoomStack);
 
     const ctx = _canvasLower.current.getContext('2d');
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(
-      0,
-      0,
-      _canvasLower.current.width,
-      _canvasLower.current.height,
-    );
-    ctx.setTransform(
+    clearCanvasByContext(ctx);
+    transformCanvas(
+      ctx,
+      tx + panningX + (panning ? mouseMoveX - mouseDownX : 0),
+      ty + panningY + (panning ? mouseMoveY - mouseDownY : 0),
       sx,
-      0,
-      0,
       sy,
-      panning ? tx + panningX + mouseMoveX - mouseDownX : tx + panningX,
-      panning ? ty + panningY + mouseMoveY - mouseDownY : ty + panningY,
     );
-
-    const scaleX = _makeScaleX(domainX, innerWidth);
-    const scaleY = _makeScaleY(domainY, innerHeight);
-    const scaleColor = d3.scaleOrdinal(d3.schemeCategory10);
 
     const len = allSeriesIds.length;
     for (let i = 0; i < len; i++) {
-      const id = allSeriesIds[i];
-      const series = seriesById[id];
-      const len = series.length;
-      if (len <= 1) continue;
-      ctx.beginPath();
-      ctx.moveTo(scaleX(series[0].x), scaleY(series[0].y));
-      for (let j = 1; j < len; j++) {
-        ctx.lineTo(scaleX(series[j].x), scaleY(series[j].y));
-      }
-      const color = scaleColor(i);
+      const color = _makeRandomColor(i);
       ctx.strokeStyle = color;
       ctx.lineWidth = 1 / _.max([sx, sy]);
-      ctx.stroke();
+
+      const id = allSeriesIds[i];
+      const series = seriesById[id];
+
+      drawLineInCanvas(
+        ctx,
+        series,
+        makeLinearScaleX(domainX, innerWidth),
+        makeLinearScaleY(domainY, innerHeight),
+      );
     }
   }
 
   _reset() {
     const { _canvasLower, _canvasUpper, _drawLine } = this;
 
-    const ctxLower = _canvasLower.current.getContext('2d');
-    const ctxUpper = _canvasUpper.current.getContext('2d');
-
-    ctxLower.setTransform(1, 0, 0, 1, 0, 0);
-    ctxUpper.setTransform(1, 0, 0, 1, 0, 0);
-
-    ctxLower.clearRect(
-      0,
-      0,
-      _canvasLower.current.width,
-      _canvasLower.current.height,
-    );
-    ctxUpper.clearRect(
-      0,
-      0,
-      _canvasUpper.current.width,
-      _canvasUpper.current.height,
-    );
+    clearCanvas(_canvasLower.current);
+    clearCanvas(_canvasUpper.current);
 
     this.setState(
       _.compose(
