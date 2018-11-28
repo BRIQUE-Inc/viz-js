@@ -1,3 +1,3 @@
 # Plot Viz
 
-> Visualization of plotting
+> Visualization helpers written in javascript

@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 
+/* ===== State handlers ===== */
 const _setSeriesNum = num => prevState => ({
   ...prevState,
   seriesNum: num,
@@ -11,6 +12,7 @@ const _setPointsNum = num => prevState => ({
   pointsNum: num,
 });
 
+/* ===== Main component ===== */
 class MainLeft extends Component {
   constructor(props) {
     super(props);

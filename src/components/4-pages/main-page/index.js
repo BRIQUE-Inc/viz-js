@@ -5,6 +5,7 @@ import MainHeader from '../../3-organisms/main-header';
 import MainLeft from '../../3-organisms/main-left';
 import MainRight from '../../3-organisms/main-right';
 
+/* ===== State handlers ===== */
 const _setSeries = seriesById => prevState => ({
   ...prevState,
   seriesById,
@@ -16,6 +17,7 @@ const _setDomainX = domainX => prevState => ({
   domainX,
 });
 
+/* ===== Main component ===== */
 class MainPage extends Component {
   constructor(props) {
     super(props);
