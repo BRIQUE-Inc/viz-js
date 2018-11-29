@@ -1,7 +1,6 @@
 {
-  "name": "plot-viz",
-  "version": "0.1.1",
-  "private": true,
+  "name": "@brique/viz-js",
+  "version": "0.1.2",
   "main": "src/assets/js/viz.js",
   "dependencies": {
     "d3": "^5.7.0"
