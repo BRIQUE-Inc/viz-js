@@ -99,7 +99,8 @@ const _zoom = prevState => {
 
   const tx2 = panningX - mouseDownX;
   const ty2 = panningY - mouseDownY;
-  const sx2 = innerWidth / mouseRectWidth;
+
+  const sx2 = innerWidth/ mouseRectWidth;
   const sy2 = innerHeight / mouseRectHeight;
 
   const [tx, ty, sx, sy] = concatTransform(
@@ -107,8 +108,8 @@ const _zoom = prevState => {
     ty1,
     sx1,
     sy1,
-    tx2,
-    ty2,
+    tx2 * sx2,
+    ty2 * sy2,
     sx2,
     sy2,
   );
